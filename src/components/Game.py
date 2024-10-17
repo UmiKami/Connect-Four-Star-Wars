@@ -1,12 +1,10 @@
+import requests
 import cv2
 import pygame
-import pygame_gui
 import os
-os.environ['SDL_AUDIODRIVER'] = 'dummy'  # Use dummy audio driver
 import glob
-from .Board import Board  # Comment this out if not using
-from .VictoryScreen import VictoryScreen
-from .CustomBoard import CustomBoard  # Import the CustomBoard
+
+os.environ['SDL_AUDIODRIVER'] = 'dummy'  # Use dummy audio driver
 
 class Game:
     def __init__(self):
@@ -21,11 +19,11 @@ class Game:
         print("Display set up.")
 
         # Load the font with increased size for victory message
-        self.font = pygame.font.Font("/workspaces/Connect-Four-Star-Wars/assets/fonts/Starjedi.ttf", 48)  # Increased font size for victory message
+        self.font = pygame.font.Font("/workspaces/Connect-Four-Star-Wars/assets/fonts/Starjedi.ttf", 48)  
         
         # Load the icons
-        self.empire_icon = pygame.image.load("/workspaces/Connect-Four-Star-Wars/assets/font-awesome/icons/empire-icon.png").convert_alpha()  # Ensure this path is correct
-        self.rebel_icon = pygame.image.load("/workspaces/Connect-Four-Star-Wars/assets/font-awesome/icons/rebel-icon.png").convert_alpha()  # Ensure this path is correct
+        self.empire_icon = pygame.image.load("/workspaces/Connect-Four-Star-Wars/assets/font-awesome/icons/empire-icon.png").convert_alpha()
+        self.rebel_icon = pygame.image.load("/workspaces/Connect-Four-Star-Wars/assets/font-awesome/icons/rebel-icon.png").convert_alpha()
         print("Icons loaded.")
 
         # Set the caption
@@ -35,14 +33,14 @@ class Game:
         self.clock = pygame.time.Clock()
         
         # Initialize the custom board
-        self.custom_board = CustomBoard(self)  # Ensure this is correctly initialized
+        self.custom_board = CustomBoard(self)
         print("Custom board initialized.")
         
         # Initialize the running flag
         self.running = True
 
         # Initialize the game over flag
-        self.game_over = False  # Initialize the game_over attribute
+        self.game_over = False
                 
         # Initialize the mixer and load sounds
         pygame.mixer.init()
@@ -52,57 +50,42 @@ class Game:
         print("Background music loaded and playing.")
 
         # Load wallpaper images
-        self.wallpapers = self.load_wallpapers("assets/animations/*.jpg")  # Adjust the pattern if needed
+        self.wallpapers = self.load_wallpapers("/workspaces/Connect-Four-Star-Wars/assets/animations/*.jpg")
         self.current_wallpaper_index = 0
-        self.wallpaper_change_time = 4000  # Time in milliseconds for each wallpaper
-        self.last_wallpaper_change = pygame.time.get_ticks()  # Get the current time
+        self.wallpaper_change_time = 4000  
+        self.last_wallpaper_change = pygame.time.get_ticks()  
         print(f"Loaded {len(self.wallpapers)} wallpapers.")
 
-        # Initialize Pygame GUI
-        self.ui_manager = pygame_gui.UIManager((self.width, self.height))  # No custom theme
-
-        # Create the restart button centered on the screen
-        button_width = 120  # Set a smaller width for the button
-        button_height = 40  # Set a smaller height for the button
-        padding = 20  # Set padding from the bottom of the screen
-        self.restart_button = pygame_gui.elements.UIButton(relative_rect=pygame.Rect((self.width // 2 - button_width // 2, self.height - button_height - padding), (button_width, button_height)),
-                                                           text='Restart',
-                                                           manager=self.ui_manager)  # Set the button text and manager
-        
-        # Set button properties directly
-        self.restart_button.set_text('Restart')  # Set the button text
-        self.restart_button.set_image(pygame.Surface((button_width, button_height)))  # Create a surface for the button
-        self.restart_button.image.fill((50, 50, 50))  # Fill the button with a dark gray color
+        # Set button properties
+        self.button_color = (50, 50, 50)
+        self.button_hover_color = (70, 70, 70)
+        self.button_width = 120  
+        self.button_height = 40  
+        self.button_rect = pygame.Rect((self.width // 2 - self.button_width // 2, self.height - self.button_height - 20), (self.button_width, self.button_height))
 
     def load_wallpapers(self, pattern):
-        # Load all wallpaper images matching the pattern
         images = []
         for filepath in glob.glob(pattern):
             image = pygame.image.load(filepath).convert()
-            images.append(pygame.transform.scale(image, (self.width, self.height)))  # Scale to fit the screen
+            images.append(pygame.transform.scale(image, (self.width, self.height)))  
         return images
 
     def run(self):
-        self.wallpapers = self.load_wallpapers("/workspaces/Connect-Four-Star-Wars/assets/animations/*.jpg")  # Usa el patrón relativo
         print("Starting the game loop...")
         while self.running:
             self.handle_events()
-            self.draw_background()  # Draw the background wallpaper
-            self.custom_board.draw()  # Draw the custom board
-            self.ui_manager.update(self.clock.tick(60) / 1000.0)  # Update the UI manager
-            self.ui_manager.draw_ui(self.screen)  # Draw the UI elements
-            pygame.display.flip()     # Update the display
+            self.draw_background() 
+            self.custom_board.draw()  
+            self.draw_restart_button()  
+            pygame.display.flip()  
 
     def draw_background(self):
-
-        # Check if it's time to change the wallpaper
         current_time = pygame.time.get_ticks()
         if current_time - self.last_wallpaper_change > self.wallpaper_change_time:
             self.current_wallpaper_index = (self.current_wallpaper_index + 1) % len(self.wallpapers)
             self.last_wallpaper_change = current_time
 
-        # Draw the current wallpaper
-        self.screen.blit(self.wallpapers[self.current_wallpaper_index], (0, 0))  # Draw the wallpaper
+        self.screen.blit(self.wallpapers[self.current_wallpaper_index], (0, 0))  
 
     def handle_events(self):
         for event in pygame.event.get():
@@ -112,59 +95,57 @@ class Game:
                 if event.key == pygame.K_ESCAPE:
                     self.running = False
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                if event.button == 1:  # Left mouse button
-                    if self.game_over:  # Check if the game is over
-                        self.restart_game()  # Restart the game
+                if event.button == 1:  
+                    if self.game_over:  
+                        self.restart_game()  
+                    elif self.button_rect.collidepoint(event.pos):
+                        self.restart_game()  
                     else:
-                        # Check if the restart button is clicked
-                        if self.restart_button.rect.collidepoint(event.pos):
-                            self.restart_game()  # Call the restart method
-                        else:
-                            # Calculate the column based on mouse position
-                            column = (event.pos[0] - (self.width - (self.custom_board.columns * self.custom_board.cell_size)) // 2) // self.custom_board.cell_size
-                            self.custom_board.drop_piece(column)  # Drop the piece in the selected column
-            self.ui_manager.process_events(event)  # Process UI events
+                        column = (event.pos[0] - (self.width - (self.custom_board.columns * self.custom_board.cell_size)) // 2) // self.custom_board.cell_size
+                        self.custom_board.drop_piece(column)  
+                        requests.post('http://localhost:3002/move', json={'action': f'drop_piece,{column}'})  # Enviar acción al servidor Flask
+
+    def draw_restart_button(self):
+        mouse_pos = pygame.mouse.get_pos()
+        if self.button_rect.collidepoint(mouse_pos):
+            color = self.button_hover_color
+        else:
+            color = self.button_color
+
+        pygame.draw.rect(self.screen, color, self.button_rect)
+
+        font = pygame.font.Font(None, 36)  
+        text_surface = font.render("Restart", True, (255, 255, 255))
+        text_rect = text_surface.get_rect(center=self.button_rect.center)
+        self.screen.blit(text_surface, text_rect)
 
     def show_victory(self, winner):
-        self.game_over = True  # Set game over state
-        # Load the appropriate icon based on the winner
+        self.game_over = True  
         icon = self.empire_icon if winner == 'Imperial' else self.rebel_icon
         
-        # Get original dimensions
         original_width, original_height = icon.get_size()
-        
-        # Calculate new dimensions while maintaining aspect ratio
         new_height = self.height // 2
         aspect_ratio = original_width / original_height
         new_width = int(new_height * aspect_ratio)
-        
-        # Scale the icon
         icon = pygame.transform.scale(icon, (new_width, new_height))
 
-        # Center the icon at the top of the screen
-        icon_rect = icon.get_rect(center=(self.width // 2, self.height // 4))  # Position the icon at the top
-
-        # Display the icon
+        icon_rect = icon.get_rect(center=(self.width // 2, self.height // 4))  
         self.screen.blit(icon, icon_rect)
 
-        # Display victory message
         victory_text = f"{winner} Wins!"
-        text_color = (255, 0, 0) if winner == 'Imperial' else (0, 0, 255)  # Red for Imperial, Blue for Rebel
+        text_color = (255, 0, 0) if winner == 'Imperial' else (0, 0, 255)  
         victory_surface = self.font.render(victory_text, True, text_color)
-        
-        # Center the text below the icon
         text_rect = victory_surface.get_rect(center=(self.width // 2, self.height // 2 + icon_rect.height // 2))
-        self.screen.blit(victory_surface, text_rect)  # Draw the victory text
+        self.screen.blit(victory_surface, text_rect)  
 
         pygame.display.flip()
-        pygame.time.wait(3000)  # Wait for 3 seconds before returning to the main menu
-
-    def __del__(self):
-        # Remove the line that tries to release background_video if it's not defined
-        pass
+        pygame.time.wait(3000)  
 
     def restart_game(self):
-        # Reset the game state
-        self.custom_board = CustomBoard(self)  # Reinitialize the custom board
-        self.current_player = 'Imperial'  # Reset to the starting player
-        self.game_over = False  # Reset game over state
+        self.custom_board = CustomBoard(self)  
+        self.game_over = False  
+
+    def process_action(self, action):
+        if action.startswith("drop_piece"):
+            _, column = action.split(",")
+            self.custom_board.drop_piece(int(column))  # Asegúrate de que drop_piece esté implementado en CustomBoard
